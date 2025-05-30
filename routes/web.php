@@ -68,9 +68,15 @@ Route::middleware(['auth', 'is_admin'])->group(function () {
     Route::get('/laporan/stok/pdf', [LaporanStokController::class, 'exportPdf'])->name('laporan.stok.pdf');
     Route::get('/laporan/stok/excel', [LaporanStokController::class, 'exportExcel'])->name('laporan.stok.excel');
 
-    // Notifikasi Pinjam
+    // Notifikasi Pinjam & Kembali
     Route::get('/notifikasi-peminjaman', [NotifikasiController::class, 'getPeminjamanMenunggu'])->name('notifikasi.peminjaman');
+    Route::get('/notifikasi-pengembalian', [NotifikasiController::class, 'getPengembalianTerbaru'])->name('api.notifikasi-pengembalian');
 
+    Route::prefix('laporan')->name('laporan.')->group(function () {
+    Route::get('/stok', [LaporanStokController::class, 'index'])->name('stok');
+    Route::get('/stok/pdf', [LaporanStokController::class, 'exportPdf'])->name('stok.pdf');
+    Route::get('/stok/excel', [LaporanStokController::class, 'exportExcel'])->name('stok.excel');
+});
 
 
     
@@ -123,28 +129,62 @@ Route::get('/dashboard/aktivitas-terbaru', function () {
 })->name('dashboard.aktivitas-terbaru');
 
 
- // Route API untuk notifikasi peminjaman menunggu (JSON)
-    Route::get('/api/notifikasi-peminjaman', function () {
-        $peminjamanTerbaru = Peminjaman::with('user', 'barang')
-            ->where('status', 'menunggu')
-            ->orderBy('created_at', 'desc')
-            ->take(5)
-            ->get();
+ // Route API untuk notifikasi gabungan (peminjaman + pengembalian)
+Route::get('/api/notifikasi-combined', function () {
+    // Get peminjaman notifications
+    $peminjamanTerbaru = Peminjaman::with('user', 'barang')
+        ->where('status', 'menunggu')
+        ->orderBy('created_at', 'desc')
+        ->take(5)
+        ->get();
 
-        $notifCount = $peminjamanTerbaru->count();
+    // Get pengembalian notifications  
+    $pengembalianTerbaru = \App\Models\Pengembalian::with(['peminjaman.user', 'peminjaman.barang'])
+        ->where('status', 'menunggu') // Add status filter if needed
+        ->orderBy('created_at', 'desc')
+        ->take(5)
+        ->get();
 
-        $data = $peminjamanTerbaru->map(function ($p) {
-            return [
-                'id' => $p->id,
-                'user_name' => $p->user->name,
-                'nama_barang' => $p->barang->nama_barang,
-                'created_at_human' => \Carbon\Carbon::parse($p->created_at)->diffForHumans(),
-            ];
-        });
+    $notifications = [];
 
-        return response()->json([
-            'count' => $notifCount,
-            'notifications' => $data,
-        ]);
-    })->name('api.notifikasi-peminjaman');
+    // Format peminjaman notifications
+    foreach ($peminjamanTerbaru as $p) {
+        $notifications[] = [
+            'id' => 'peminjaman_' . $p->id,
+            'type' => 'peminjaman',
+            'user_name' => $p->user->name,
+            'nama_barang' => $p->barang->nama_barang,
+            'created_at_human' => \Carbon\Carbon::parse($p->created_at)->diffForHumans(),
+            'created_at' => $p->created_at,
+            'route' => route('peminjaman.index')
+        ];
+    }
+
+    // Format pengembalian notifications
+    foreach ($pengembalianTerbaru as $k) {
+        $notifications[] = [
+            'id' => 'pengembalian_' . $k->pengembalian_id,
+            'type' => 'pengembalian',
+            'user_name' => $k->peminjaman->user->name ?? 'User #' . $k->peminjaman->user_id,
+            'nama_barang' => $k->peminjaman->barang->nama_barang ?? 'Barang #' . $k->peminjaman->barang_id,
+            'created_at_human' => \Carbon\Carbon::parse($k->created_at)->diffForHumans(),
+            'created_at' => $k->created_at,
+            'route' => route('pengembalian.index')
+        ];
+    }
+
+    // Sort by created_at (newest first)
+    usort($notifications, function($a, $b) {
+        return $b['created_at'] <=> $a['created_at'];
+    });
+
+    // Take only 5 most recent
+    $notifications = array_slice($notifications, 0, 5);
+
+    return response()->json([
+        'count' => count($notifications),
+        'notifications' => $notifications,
+    ]);
+})->name('api.notifikasi-combined');
+
 });

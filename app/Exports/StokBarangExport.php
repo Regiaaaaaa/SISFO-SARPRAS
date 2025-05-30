@@ -2,22 +2,28 @@
 
 namespace App\Exports;
 
-use App\Models\Barang;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
 class StokBarangExport implements FromCollection, WithHeadings
 {
+    protected $barangs;
+
+    public function __construct($barangs)
+    {
+        $this->barangs = $barangs;
+    }
+
     public function collection()
     {
-        return Barang::with('kategori')->get()->map(function ($item) {
+        return $this->barangs->map(function ($item) {
             return [
                 'code_barang' => $item->code_barang ?? '-',
-                'Nama Barang' => $item->nama_barang ?? '-',                
-                'Kategori' => $item->kategori->nama_kategori ?? '-',
-                'Jumlah Stok' => $item->stok ?? '0',
-                'Merek' => $item->merek ?? '-',
-                'Kondisi' => $item->kondisi_barang ?? '-',
+                'nama_barang' => $item->nama_barang ?? '-',                
+                'kategori' => $item->kategori->nama_kategori ?? '-',
+                'jumlah_stok' => $item->stok ?? '0',
+                'merek' => $item->merek ?? '-',
+                'kondisi' => $item->kondisi_barang ?? '-',
             ];
         });
     }
@@ -28,9 +34,9 @@ class StokBarangExport implements FromCollection, WithHeadings
             'code_barang',
             'nama_barang',
             'kategori',
-            'Jumlah Stok',
+            'jumlah_stok',
             'merek',
-            'Kondisi',
+            'kondisi',
         ];
     }
 }

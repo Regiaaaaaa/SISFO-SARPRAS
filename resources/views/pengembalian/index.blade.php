@@ -29,8 +29,8 @@
                     @forelse($pengembalians as $p)
                     <tr data-id="{{ $p->pengembalian_id ?? 'null' }}">
                         <td class="align-middle ps-4">{{ $p->pengembalian_id }}</td>
-                        <td class="align-middle">{{ $p->peminjaman->user->name ?? $p->peminjaman->user_id ?? '-' }}</td>
-                        <td class="align-middle">{{ $p->peminjaman->barang->nama_barang ?? $p->peminjaman->barang_id ?? '-' }}</td>
+                        <td class="align-middle">{{ $p->peminjaman->user->name ?? '-' }}</td>
+                        <td class="align-middle">{{ $p->peminjaman->barang->nama_barang ?? '-' }}</td>
                         <td class="align-middle">{{ $p->tanggal_kembali }}</td>
                         <td class="align-middle">{{ $p->deskripsi_pengembalian }}</td>
                         <td class="align-middle">
@@ -50,18 +50,33 @@
                             @endif
                         </td>
                         <td class="aksi align-middle pe-4">
-                            @if($p->status == 'menunggu')
-                                <div class="d-flex gap-2">
+                            <div class="d-flex gap-2">
+                                @if($p->status == 'menunggu')
                                     <button class="btn btn-sm btn-outline-success approve-btn">
                                         <i class="bi bi-check-circle"></i>
                                     </button>
                                     <button class="btn btn-sm btn-outline-danger reject-btn">
                                         <i class="bi bi-x-circle"></i>
                                     </button>
-                                </div>
-                            @else
-                                <span class="text-muted">-</span>
-                            @endif
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                                <button class="btn btn-sm btn-outline-primary detail-btn" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#detailModal"
+                                    data-user="{{ $p->peminjaman->user->name ?? '-' }}"
+                                    data-barang="{{ $p->peminjaman->barang->nama_barang ?? '-' }}"
+                                    data-jumlah="{{ $p->peminjaman->jumlah ?? '-' }}"
+                                    data-kembali="{{ $p->tanggal_kembali }}"
+                                    data-kondisi="{{ $p->deskripsi_pengembalian }}"
+                                    data-pinjam="{{ $p->peminjaman->tanggal_pinjam ?? '-' }}"
+                                    data-kelas="{{ $p->peminjaman->user->kelas ?? '-' }}"
+                                    data-jurusan="{{ $p->peminjaman->user->jurusan ?? '-' }}"
+                                    data-foto="{{ $p->bukti_foto ? asset('storage/' . $p->bukti_foto) : '' }}"
+                                >
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     @empty
@@ -75,13 +90,40 @@
     </div>
 </div>
 
+{{-- Modal Detail --}}
+<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="detailModalLabel">Detail Pengembalian</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>User:</strong> <span id="modal-user"></span></p>
+        <p><strong>Kelas:</strong> <span id="modal-kelas"></span></p>
+        <p><strong>Jurusan:</strong> <span id="modal-jurusan"></span></p>
+        <p><strong>Barang:</strong> <span id="modal-barang"></span></p>
+        <p><strong>Jumlah:</strong> <span id="detail-jumlah"></span></p>
+        <p><strong>Tanggal Pinjam:</strong> <span id="modal-pinjam"></span></p>
+        <p><strong>Tanggal Kembali:</strong> <span id="modal-kembali"></span></p>
+        <p><strong>Kondisi Pengembalian:</strong> <span id="modal-kondisi"></span></p>
+        <p><strong>Bukti Foto:</strong> 
+            <br>
+            <a href="#" id="modal-foto-link" target="_blank">
+                <img id="modal-foto" src="" class="img-fluid rounded shadow mt-2" style="max-height: 200px;" alt="Bukti Foto">
+            </a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
 {{-- jQuery & Bootstrap Icons --}}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
 <script>
     $(function() {
-        // Approve
         $('.approve-btn').click(function() {
             const row = $(this).closest('tr');
             const id = row.data('id');
@@ -107,23 +149,21 @@
             });
         });
 
-        // Reject
         $('.reject-btn').click(function() {
             const row = $(this).closest('tr');
             const id = row.data('id');
-            
+
             if (!id || id === 'null') {
                 alert('ID pengembalian tidak ditemukan.');
                 return;
             }
-            
+
             $.ajax({
                 url: `/api/pengembalian/${id}/reject`,
                 method: 'PUT',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                dataType: 'json',
                 success: function() {
                     row.find('.status').html('<span class="badge bg-secondary px-3 py-2">Ditolak</span>');
                     row.find('.aksi').html('<span class="text-muted">-</span>');
@@ -133,11 +173,31 @@
                 }
             });
         });
+
+       $('.detail-btn').click(function() {
+    $('#modal-user').text($(this).data('user'));
+    $('#modal-barang').text($(this).data('barang')); // 🟢 menampilkan nama barang
+    $('#detail-jumlah').text($(this).data('jumlah')); // 🟢 menampilkan jumlah
+    $('#modal-kembali').text($(this).data('kembali'));
+    $('#modal-kondisi').text($(this).data('kondisi'));
+    $('#modal-pinjam').text($(this).data('pinjam'));
+    $('#modal-kelas').text($(this).data('kelas'));
+    $('#modal-jurusan').text($(this).data('jurusan'));
+
+    const foto = $(this).data('foto');
+    if (foto) {
+        $('#modal-foto').attr('src', foto);
+        $('#modal-foto-link').attr('href', foto);
+    } else {
+        $('#modal-foto').attr('src', '');
+        $('#modal-foto-link').attr('href', '#');
+    }
+});
+
     });
 </script>
 
 <style>
-    /* Gaya untuk tabel */
     .table th {
         font-size: 0.85rem;
         text-transform: uppercase;
@@ -145,36 +205,32 @@
         padding-top: 15px;
         padding-bottom: 15px;
     }
-    
+
     .table td {
         padding-top: 12px;
         padding-bottom: 12px;
         vertical-align: middle;
     }
-    
-    /* Gaya untuk badge status */
+
     .badge {
         font-weight: 500;
         letter-spacing: 0.5px;
         border-radius: 4px;
     }
-    
-    /* Hover effect pada baris tabel */
+
     .table-hover tbody tr:hover {
         background-color: rgba(0, 0, 0, 0.02);
     }
-    
-    /* ID berwarna biru seperti pada contoh gambar */
+
     tbody tr td:first-child {
         color: #0d6efd;
         font-weight: 500;
     }
-    
-    /* Link bukti foto */
+
     .text-primary {
         text-decoration: none;
     }
-    
+
     .text-primary:hover {
         text-decoration: underline;
     }

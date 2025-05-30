@@ -200,38 +200,144 @@
                 </ul>
             </li>
 
+            
+
             <!-- Notifikasi Bell -->
 @php
-    $notifCount = $peminjamanTerbaru->where('status', 'menunggu')->count();
+use App\Models\Peminjaman;
+use App\Models\Pengembalian;
+
+$notifPeminjaman = Peminjaman::where('status', 'menunggu')->with(['user', 'barang'])->latest()->take(5)->get();
+$notifPengembalian = Pengembalian::where('status', 'menunggu')->with(['peminjaman.user', 'peminjaman.barang'])->latest()->take(5)->get();
+
+$totalNotif = $notifPeminjaman->count() + $notifPengembalian->count();
 @endphp
-<li class="nav-item dropdown mx-2">
-    <a class="nav-link position-relative text-white" href="#" id="notifDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-        <i class="fas fa-bell fa-lg"></i>
-        @if($notifCount > 0)
-            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                {{ $notifCount }}
-            </span>
-        @endif
+
+<!-- Icon Notifikasi -->
+
+<li class="nav-item dropdown">
+    <a class="nav-link position-relative p-2" href="#" id="notifDropdown" role="button" data-bs-toggle="dropdown">
+        <i class="fas fa-bell text-white fs-5"></i>
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifBadge" style="display: none;">0</span>
     </a>
-    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="notifDropdown" style="width: 300px;">
-        <h6 class="dropdown-header">Notifikasi Peminjaman</h6>
-        @forelse($peminjamanTerbaru->where('status', 'menunggu')->take(5) as $p)
+    <ul class="dropdown-menu dropdown-menu-end shadow-sm" id="notifDropdownMenu" style="min-width: 320px;">
+        <li class="dropdown-header fw-bold">🔔 Notifikasi</li>
+        <li><a class="dropdown-item text-muted small text-center py-3">Loading...</a></li>
+    </ul>
+</li>
+
+<!-- Pastikan TIDAK ADA text lain di luar element ini -->
+
+<script>
+async function fetchNotifikasi() {
+    try {
+        const response = await fetch('{{ route("api.notifikasi-combined") }}', {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) throw new Error('Network response not ok');
+
+        const data = await response.json();
+        
+        // Update badge
+        const badge = document.getElementById('notifBadge');
+        if (data.count > 0) {
+            badge.textContent = data.count;
+            badge.style.display = 'block';
+        } else {
+            badge.style.display = 'none';
+        }
+
+        // Update dropdown menu
+        const dropdownMenu = document.getElementById('notifDropdownMenu');
+        
+        let menuHTML = '<li class="dropdown-header fw-bold">🔔 Notifikasi</li>';
+        
+        if (data.notifications && data.notifications.length > 0) {
+            data.notifications.forEach((notif, index) => {
+                const actionText = notif.type === 'peminjaman' ? 'mengajukan peminjaman' : 'mengajukan pengembalian';
+                
+                menuHTML += `
+                    <li>
+                        <a class="dropdown-item py-2" href="${notif.route || '#'}">
+                            <div class="d-flex flex-column">
+                                <span class="small">
+                                    <strong>${notif.user_name}</strong> ${actionText} ${notif.nama_barang}
+                                </span>
+                                <small class="text-muted mt-1">
+                                    <i class="fas fa-clock"></i> ${notif.created_at_human}
+                                </small>
+                            </div>
+                        </a>
+                    </li>
+                `;
+                
+                // Add divider if not last item
+                if (index < data.notifications.length - 1) {
+                    menuHTML += '<li><hr class="dropdown-divider"></li>';
+                }
+            });
+        } else {
+            menuHTML += '<li><a class="dropdown-item text-muted small text-center py-3"></a></li>';
+        }
+        
+        dropdownMenu.innerHTML = menuHTML;
+        
+    } catch (error) {
+        console.error('Fetch notifikasi error:', error);
+        const dropdownMenu = document.getElementById('notifDropdownMenu');
+        dropdownMenu.innerHTML = `
+            <li class="dropdown-header fw-bold">🔔 Notifikasi</li>
+            <li><a class="dropdown-item text-muted small text-center py-3">Error memuat notifikasi</a></li>
+        `;
+    }
+}
+
+// Initial load
+document.addEventListener('DOMContentLoaded', function() {
+    fetchNotifikasi();
+    // Update every 5 seconds
+    setInterval(fetchNotifikasi, 5000);
+});
+</script>
+        
+        <!-- Notif Peminjaman -->
+        @foreach ($notifPeminjaman as $p)
             <li>
-                <a class="dropdown-item d-flex align-items-start" href="#">
-                    <div class="me-3">
-                        <i class="fas fa-clipboard-list text-primary fa-lg"></i>
-                    </div>
-                    <div>
-                        <div class="fw-semibold">{{ $p->user->name }} meminjam {{ $p->barang->nama_barang }}</div>
-                        <small class="text-muted">{{ \Carbon\Carbon::parse($p->created_at)->diffForHumans() }}</small>
+                <a class="dropdown-item py-2" href="{{ route('peminjaman.index') }}">
+                    <div class="d-flex flex-column">
                     </div>
                 </a>
             </li>
-        @empty
-            <li><span class="dropdown-item text-muted">Tidak ada notifikasi</span></li>
-        @endforelse
+            @if (!$loop->last || $notifPengembalian->count() > 0)
+                <li><hr class="dropdown-divider"></li>
+            @endif
+        @endforeach
+
+        <!-- Notif Pengembalian -->
+        @foreach ($notifPengembalian as $k)
+            <li>
+                <a class="dropdown-item py-2" href="{{ route('pengembalian.index') }}">
+                    <div class="d-flex flex-column">
+                    </div>
+                </a>
+            </li>
+            @if (!$loop->last)
+                <li><hr class="dropdown-divider"></li>
+            @endif
+        @endforeach
+
+        @if($totalNotif == 0)
+            <li><a class="dropdown-item text-muted small text-center py-3"> </a></li>
+        @endif
     </ul>
 </li>
+
+
 
         </ul>
     </div>
@@ -251,62 +357,83 @@
     @stack('scripts')
 
     <script>
-    async function fetchNotifikasi() {
-        try {
-            const response = await fetch('{{ route("api.notifikasi-peminjaman") }}', {
-                headers: {
-                    'Accept': 'application/json'
-                },
-                credentials: 'same-origin'
-            });
-            if (!response.ok) throw new Error('Network response not ok');
+async function fetchNotifikasi() {
+    try {
+        const response = await fetch('{{ route("api.notifikasi-combined") }}', {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (!response.ok) throw new Error('Network response not ok');
 
-            const data = await response.json();
+        const data = await response.json();
+        
+        // Update badge
+        const badge = document.getElementById('notifBadge');
+        if (data.count > 0) {
+            badge.textContent = data.count;
+            badge.style.display = 'block';
+        } else {
+            badge.style.display = 'none';
+        }
 
-            const badge = document.querySelector('#notifDropdown .badge');
-            if (data.count > 0) {
-                if (badge) {
-                    badge.textContent = data.count;
-                } else {
-                    const span = document.createElement('span');
-                    span.classList.add('position-absolute', 'top-0', 'start-100', 'translate-middle', 'badge', 'rounded-pill', 'bg-danger');
-                    span.textContent = data.count;
-                    document.querySelector('#notifDropdown').appendChild(span);
-                }
-            } else {
-                if (badge) badge.remove();
-            }
-
-            const dropdownMenu = document.querySelector('#notifDropdown').parentElement.querySelector('.dropdown-menu');
-
-            dropdownMenu.innerHTML = `<h6 class="dropdown-header">Notifikasi Peminjaman</h6>`;
-            if (data.notifications.length > 0) {
-                data.notifications.forEach(notif => {
-                    const item = document.createElement('li');
-                    item.innerHTML = `
-                        <a class="dropdown-item d-flex align-items-start" href="#">
-                            <div class="me-3">
-                                <i class="fas fa-clipboard-list text-primary fa-lg"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold">${notif.user_name} meminjam ${notif.nama_barang}</div>
-                                <small class="text-muted">${notif.created_at_human}</small>
+        // Update dropdown menu
+        const dropdownMenu = document.getElementById('notifDropdownMenu');
+        
+        let menuHTML = '<li class="dropdown-header fw-bold">🔔 Notifikasi</li>';
+        
+        if (data.notifications && data.notifications.length > 0) {
+            data.notifications.forEach((notif, index) => {
+                const actionText = notif.type === 'peminjaman' ? 'mengajukan peminjaman' : 'mengajukan pengembalian';
+                
+                menuHTML += `
+                    <li>
+                        <a class="dropdown-item py-2" href="${notif.route || '#'}">
+                            <div class="d-flex flex-column">
+                                <span class="small">
+                                    <strong>${notif.user_name}</strong> ${actionText} ${notif.nama_barang}
+                                </span>
+                                <small class="text-muted mt-1">
+                                    <i class="fas fa-clock"></i> ${notif.created_at_human}
+                                </small>
                             </div>
                         </a>
-                    `;
-                    dropdownMenu.appendChild(item);
-                });
-            } else {
-                dropdownMenu.innerHTML += `<li><span class="dropdown-item text-muted">Tidak ada notifikasi</span></li>`;
-            }
-        } catch (error) {
-            console.error('Fetch notifikasi error:', error);
+                    </li>
+                `;
+                
+                // Add divider if not last item
+                if (index < data.notifications.length - 1) {
+                    menuHTML += '<li><hr class="dropdown-divider"></li>';
+                }
+            });
+        } else {
+            menuHTML += '<li><a class="dropdown-item text-muted small text-center py-3">Belum ada notifikasi</a></li>';
+        }
+        
+        dropdownMenu.innerHTML = menuHTML;
+        
+    } catch (error) {
+        console.error('Fetch notifikasi error:', error);
+        const dropdownMenu = document.getElementById('notifDropdownMenu');
+        if (dropdownMenu) {
+            dropdownMenu.innerHTML = `
+                <li class="dropdown-header fw-bold">🔔 Notifikasi</li>
+                <li><a class="dropdown-item text-muted small text-center py-3">Gagal memuat</a></li>
+            `;
         }
     }
+}
 
+// Initial load
+document.addEventListener('DOMContentLoaded', function() {
     fetchNotifikasi();
-    setInterval(fetchNotifikasi, 10000);
-    </script>
+    // Update every 5 seconds
+    setInterval(fetchNotifikasi, 5000);
+});
+</script>
 </body>
 </html>
 
