@@ -8,6 +8,7 @@ use App\Http\Controllers\PeminjamanController;
 use App\Http\Controllers\PengembalianController;
 use App\Http\Controllers\KategoriBarangController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\NotifController;
 
 // Login untuk dapatkan token
 Route::post('/login', [AuthController::class, 'loginApi']);
@@ -41,9 +42,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/peminjaman', [PeminjamanController::class, 'index']);
     Route::get('/peminjaman/{id}', [PeminjamanController::class, 'show']);
     Route::post('/peminjaman', [PeminjamanController::class, 'store']);
-    Route::put('/peminjaman/{id}', [PeminjamanController::class, 'update']);
-    Route::delete('/peminjaman/{id}', [PeminjamanController::class, 'destroy']);
+    Route::put('/peminjaman/{id}', [PeminjamanController::class, 'update'])->where('id', '[0-9]+');
+    Route::delete('/peminjaman/{id}', [PeminjamanController::class, 'destroy'])->where('id', '[0-9]+');
     
+    // Notifikasi
+    Route::get('/notifications/{userId}', [NotifController::class, 'index'])->where('userId', '[0-9]+');
+    Route::put('/notifications/{notificationId}/read', [NotifController::class, 'markAsRead']);
+    Route::put('/notifications/mark-all-read/{userId}', [NotifController::class, 'markAllAsRead']);
+
 
 
     //Approval Peminjaman 

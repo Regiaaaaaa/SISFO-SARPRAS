@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Peminjaman;
 use App\Models\Barang;
+use App\Models\Notification;
 use Illuminate\Support\Facades\Log;
 
 class PeminjamanController extends Controller
@@ -117,10 +118,19 @@ class PeminjamanController extends Controller
 
     public function approve(Request $request, $id)
     {
-        $peminjaman = Peminjaman::with('barang')->findOrFail($id);
+        $peminjaman = Peminjaman::with('barang','user')->findOrFail($id);
+        
+        Notification::create([  
+    'user_id' => $peminjaman->user_id,
+    'title' => 'Peminjaman Disetujui',
+    'message' => "Peminjaman {$peminjaman->barang->nama_barang} atas nama {$peminjaman->user->name} telah disetujui oleh admin.",
+    'type' => 'peminjaman_approved'
+]);
+
+
 
         if ($peminjaman->status !== 'menunggu') {
-            return response()->json(['error' => 'Peminjaman sudah diproses.'], 400);
+            return response()->json(['message' => 'Peminjaman sudah diproses.'], 200);
         }
 
         // Optional: cek stok barang
@@ -141,6 +151,19 @@ class PeminjamanController extends Controller
     public function reject(Request $request, $id)
     {
         $peminjaman = Peminjaman::findOrFail($id);
+
+
+         $message = "Peminjaman {$peminjaman->barang->nama_barang} atas nama {$peminjaman->user->name} telah ditolak oleh admin.";
+    if ($request->reason) {
+        $message .= " Alasan: {$request->reason}";
+    }
+
+    Notification::create([
+        'user_id' => $peminjaman->user_id,
+        'title' => 'Peminjaman Ditolak',
+        'message' => $message,
+        'type' => 'peminjaman_rejected'
+    ]);
 
         if ($peminjaman->status !== 'menunggu') {
             return response()->json(['error' => 'Peminjaman sudah diproses.'], 400);
