@@ -44,6 +44,7 @@
                             <th>Kelas</th>
                             <th>Jurusan</th>
                             <th> Barang</th>
+                             <th class="text-center">Jumlah</th>
                             <th>Pinjam</th>
                             <th>Tgl Kembali</th>
                             <th>Keterangan</th>
@@ -57,6 +58,7 @@
                             <td>{{ $data->peminjaman->user->kelas ?? '-' }}</td>
                             <td>{{ $data->peminjaman->user->jurusan ?? '-' }}</td>
                             <td>{{ $data->peminjaman->barang->nama_barang ?? '-' }}</td>
+                            <td class="text-center">{{ $data->peminjaman->jumlah ?? 0 }}</td>
                             <td>{{ \Carbon\Carbon::parse($data->peminjaman->tanggal_pinjam)->format('d/m/Y') }}</td>
                             <td>{{ \Carbon\Carbon::parse($data->tanggal_kembali)->format('d/m/Y') }}</td>
                             <td>{{ $data->deskripsi_pengembalian }}</td>

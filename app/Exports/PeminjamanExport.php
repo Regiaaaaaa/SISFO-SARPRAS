@@ -34,6 +34,8 @@ class PeminjamanExport implements FromCollection, WithHeadings
         return $query->get()->map(function ($item) {
             return [
                 'Nama User' => $item->user->name ?? '-',
+                'Kelas'     => $item->user->kelas ?? '-',
+                'Jurusan'   => $item->user->jurusan ?? '-',
                 'Nama Barang' => $item->barang->nama_barang ?? '-',
                 'digunakan_untuk' => $item->digunakan_untuk ?? '-',
                 'Jumlah' => $item->jumlah,
@@ -48,6 +50,8 @@ class PeminjamanExport implements FromCollection, WithHeadings
     {
         return [
             'Nama User',
+            'Kelas',
+            'Jurusan',
             'Nama Barang',
             'Digunakan Untuk',
             'Jumlah',

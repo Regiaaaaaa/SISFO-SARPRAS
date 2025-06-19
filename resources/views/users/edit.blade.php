@@ -53,7 +53,7 @@
                     <option value="RPL" {{ old('jurusan', $user->jurusan) == 'RPL' ? 'selected' : '' }}>RPL</option>
                     <option value="ANIMASI" {{ old('jurusan', $user->jurusan) == 'ANIMASI' ? 'selected' : '' }}>ANIMASI</option>
                     <option value="PSPT" {{ old('jurusan', $user->jurusan) == 'PSPT' ? 'selected' : '' }}>PSPT</option>
-                    <option value="TJK" {{ old('jurusan', $user->jurusan) == 'TJK' ? 'selected' : '' }}>TJK</option>
+                    <option value="TJKT" {{ old('jurusan', $user->jurusan) == 'TJKT' ? 'selected' : '' }}>TJKT</option>
                     <option value="TE" {{ old('jurusan', $user->jurusan) == 'TE' ? 'selected' : '' }}>TE</option>
                 </select>
             </div>

@@ -40,6 +40,8 @@
             <tr>
                 <th>No</th>
                 <th>User</th>
+                <th>Kelas</th>
+                <th>Jurusan</th>
                 <th>Barang</th>
                 <th>Jumlah</th>
                 <th>Keterangan</th>
@@ -53,6 +55,8 @@
             <tr>
                 <td>{{ $i + 1 }}</td>
                 <td>{{ $data->user->name ?? '-' }}</td>
+                <td>{{ $data->user->kelas ?? '-' }}</td>
+                <td>{{ $data->user->jurusan ?? '-' }}</td>
                 <td>{{ $data->barang->nama_barang ?? '-' }}</td>
                 <td>{{ $data->jumlah }}</td>
                 <td>{{ $data->digunakan_untuk }}</td>

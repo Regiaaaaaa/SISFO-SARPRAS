@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Pengembalian;
+use App\Models\Notification;
 
 class PengembalianController extends Controller
 {
@@ -121,36 +122,57 @@ class PengembalianController extends Controller
     }
 
 public function approve(Request $request, $id)
-{
-    $pengembalian = Pengembalian::with('peminjaman')->findOrFail($id);
+    {
+        $pengembalian = Pengembalian::with('peminjaman.user', 'peminjaman.barang')->findOrFail($id);
 
-    if ($pengembalian->status !== 'menunggu') {
-        return response()->json(['error' => 'Pengembalian sudah diproses.'], 400);
+        if ($pengembalian->status !== 'menunggu') {
+            return response()->json(['error' => 'Pengembalian sudah diproses.'], 400);
+        }
+
+        $pengembalian->update(['status' => 'disetujui']);
+
+        $peminjaman = $pengembalian->peminjaman;
+        if ($peminjaman) {
+            $peminjaman->update(['status' => 'dikembalikan']);
+
+            // Notifikasi ke user
+            Notification::create([
+                'user_id' => $peminjaman->user_id,
+                'title' => 'Pengembalian Disetujui',
+                'message' => "Pengembalian barang {$peminjaman->barang->nama_barang} atas nama {$peminjaman->user->name} telah disetujui oleh admin.",
+                'type' => 'pengembalian_approved',
+            ]);
+        }
+
+        return response()->json(['message' => 'Pengembalian berhasil disetujui dan peminjaman diperbarui.']);
     }
 
-    // Set status pengembalian ke "disetujui"
-    $pengembalian->update(['status' => 'disetujui']);
-
-    // Pastikan update status peminjaman juga
-    $peminjaman = \App\Models\Peminjaman::where('peminjaman_id', $pengembalian->peminjaman_id)->first();
-    if ($peminjaman) {
-        $peminjaman->update(['status' => 'dikembalikan']);
-    }
-
-    return response()->json(['message' => 'Pengembalian berhasil disetujui dan peminjaman diperbarui.']);
-}
 
 
 
     public function reject(Request $request, $id)
     {
-        $pengembalian = Pengembalian::findOrFail($id);
+        $pengembalian = Pengembalian::with('peminjaman.user', 'peminjaman.barang')->findOrFail($id);
 
         if ($pengembalian->status !== 'menunggu') {
             return response()->json(['error' => 'Pengembalian sudah diproses.'], 400);
         }
 
         $pengembalian->update(['status' => 'ditolak']);
+
+        $peminjaman = $pengembalian->peminjaman;
+
+        $message = "Pengembalian barang {$peminjaman->barang->nama_barang} atas nama {$peminjaman->user->name} telah ditolak oleh admin.";
+        if ($request->reason) {
+            $message .= " Alasan: {$request->reason}";
+        }
+
+        Notification::create([
+            'user_id' => $peminjaman->user_id,
+            'title' => 'Pengembalian Ditolak',
+            'message' => $message,
+            'type' => 'pengembalian_rejected',
+        ]);
 
         return response()->json(['message' => 'Pengembalian berhasil ditolak.']);
     }

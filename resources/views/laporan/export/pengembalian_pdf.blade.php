@@ -40,7 +40,10 @@
         <thead>
             <tr>
                 <th>User</th>
+                <th>Kelas</th>
+                <th>Jurusan</th>
                 <th>Barang</th>
+                <th>Tgl Pinjam</th>
                 <th>Tgl Kembali</th>
                 <th>Deskripsi</th>
                 <th>Status</th>
@@ -50,7 +53,10 @@
             @forelse($pengembalians as $data)
                 <tr>
                     <td>{{ $data->peminjaman->user->name ?? '-' }}</td>
+                    <td>{{ $data->peminjaman->user->kelas ?? '-' }}</td>
+                    <td>{{ $data->peminjaman->user->jurusan ?? '-' }}</td>
                     <td>{{ $data->peminjaman->barang->nama_barang ?? '-' }}</td>
+                    <td>{{ \Carbon\Carbon::parse($data->peminjaman->tanggal_pinjam)->format('d/m/Y') }}</td>
                     <td>{{ \Carbon\Carbon::parse($data->tanggal_kembali)->format('d/m/Y') }}</td>
                     <td>{{ $data->deskripsi_pengembalian }}</td>
                     <td>
